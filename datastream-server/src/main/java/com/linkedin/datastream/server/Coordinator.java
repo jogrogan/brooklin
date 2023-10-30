@@ -671,16 +671,12 @@ public class Coordinator implements ZkAdapter.ZkAdapterListener, MetricsAware {
   }
 
   private void getAssignmentsFuture(List<Future<Boolean>> assignmentChangeFutures, Instant start)
-      throws TimeoutException, InterruptedException {
+      throws TimeoutException, InterruptedException, ExecutionException {
     for (Future<Boolean> assignmentChangeFuture : assignmentChangeFutures) {
       if (Duration.between(start, Instant.now()).compareTo(ASSIGNMENT_TIMEOUT) > 0) {
         throw new TimeoutException("Timeout doing assignment");
       }
-      try {
-        assignmentChangeFuture.get(ASSIGNMENT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-      } catch (ExecutionException e) {
-        _log.warn("onAssignmentChange call threw exception", e);
-      }
+      assignmentChangeFuture.get(ASSIGNMENT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
     }
   }
 
@@ -737,11 +733,11 @@ public class Coordinator implements ZkAdapter.ZkAdapterListener, MetricsAware {
           "onAssignmentChange retries reached threshold of {}. Not queuing further retry on onAssignmentChange event.",
           _config.getMaxAssignmentRetryCount());
       queueEvent = false;
-    }
 
-    EventType meter = isDatastreamUpdate ? HANDLE_DATASTREAM_CHANGE_WITH_UPDATE : HANDLE_ASSIGNMENT_CHANGE;
-    _log.warn("Updating metric for event " + meter);
-    _metrics.updateKeyedMeter(CoordinatorMetrics.getKeyedMeter(meter), 1);
+      EventType meter = isDatastreamUpdate ? HANDLE_DATASTREAM_CHANGE_WITH_UPDATE : HANDLE_ASSIGNMENT_CHANGE;
+      _log.warn("Updating metric for event " + meter);
+      _metrics.updateKeyedMeter(CoordinatorMetrics.getKeyedMeter(meter), 1);
+    }
 
     if (queueEvent) {
       _log.warn("Queuing onAssignmentChange event");
@@ -751,7 +747,7 @@ public class Coordinator implements ZkAdapter.ZkAdapterListener, MetricsAware {
     }
   }
 
-  private void handleAssignmentChange(boolean isDatastreamUpdate) throws TimeoutException {
+  private void handleAssignmentChange(boolean isDatastreamUpdate) throws ExecutionException {
     long startAt = System.currentTimeMillis();
 
     // when there is any change to the assignment for this instance. Need to find out what is the connector
