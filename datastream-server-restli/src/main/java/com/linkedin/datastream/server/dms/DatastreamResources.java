@@ -1028,6 +1028,7 @@ public class DatastreamResources extends CollectionResourceTemplate<String, Data
     }
     return _store.getAllDatastreams()
         .map(_store::getDatastream)
+        .filter(Objects::nonNull)
         .filter(d -> taskPrefix.equals(DatastreamUtils.getTaskPrefix(d)))
         .collect(Collectors.toList());
   }
